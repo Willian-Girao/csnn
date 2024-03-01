@@ -1,0 +1,123 @@
+# author: williansoaresgirao
+# code source: https://snntorch.readthedocs.io/en/latest/tutorials/tutorial_6.html
+
+import snntorch as snn
+from snntorch import surrogate
+from snntorch import backprop
+from snntorch import functional as SF
+from snntorch import utils
+from snntorch import spikeplot as splt
+
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+import torch.nn.functional as F
+
+import matplotlib.pyplot as plt
+import numpy as np
+import itertools
+
+### 1. SURROGATE GRADIENT DESCENT ###
+
+# @TODO - the class defined bellow is not used later in the code. Try using it instead of the 'surrogate.fast_sigmoid(slope=25)'.
+
+# Leaky neuron model, overriding the backward pass with a custom function
+class LeakySigmoidSurrogate(nn.Module):
+    def __init__(self, beta=0.5, threshold=1.0, k=25):
+
+        self.beta = beta
+        self.threshold = threshold
+        self.surrogate_func = self.FastSigmoid.apply
+
+    # the forward function is called each time we call Leaky
+    def forward(self, input_, mem):
+        spk = self.surrogate_func((mem-self.threshold))             # call the Heaviside function
+        reset = (spk - self.threshold).detach()                     # reset will be '0' if the neuron has spiked
+        mem = self.beta * mem + input_ - reset
+
+    # Forward pass: Heaviside function
+    # Backward pass: override Dirac Delta with gradient of fast sigmoid (surrogate gradient)
+    """
+        Nested classes in Python do not inherently have access to the variables of their containing class (unless explicitly passed), so 
+    marking it as a static method doesn't make sense. The decorator is intended to be used before methods within a class.
+    """
+    #@staticmethod                                                  # commeted out since it's wrong to use this decorator for a nested class
+    class FastSigmoid(torch.autograd.Function):
+        @staticmethod                                               # conceptual method (doesn't access/modify class/instance variables)
+        def forward(ctx, mem, k=25):
+            ctx.save_for_backward(mem)                              # store the membrane potential for use in the backward pass
+            ctx.k = k
+
+            # @TODO - what is out here? for it to be the spike it should use the threshold. This is not clear to me.
+            out = (mem > 0).float()                                 # Heaviside on the forward pass: Eq(1)
+
+            return out
+        
+        @staticmethod
+        def backward(ctx, grad_output):
+            (mem,) = ctx.saved_tensors                              # retrieve membrane potential
+            grad_input = grad_output.clone()
+            grad = grad_input / (ctx.k * torch.abs(mem) + 1.0)**2   # (surrogate) gradient of fast sigmoid on backward pass: Eq(4)
+
+### 2. SETTING UP THE CSNN ###
+
+### 2.1 DATA LOADERS ###
+
+batch_size = 64
+data_path = '/datasets/mnist'
+
+dtype = torch.float
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('mps') if torch.backends.mps.is_available() else torch.device('cpu')
+
+transform = transforms.Compose([
+        transforms.Resize((28, 28)),
+        transforms.Grayscale(),
+        transforms.ToTensor(),
+        transforms.Normalize((0,), (1,))])
+
+mnist_train = datasets.MNIST(data_path, train=True, download=True, transform=transform)
+mnist_test = datasets.MNIST(data_path, train=False, download=True, transform=transform)
+
+train_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=True, drop_last=True)
+test_loader = DataLoader(mnist_test, batch_size=batch_size, shuffle=True, drop_last=True)
+
+### 2.2 DEFINE THE NETWORK (12C5-MP2-64C5-MP2-1024FC10) ###
+
+# neuron and simulation parameters
+spike_grad = surrogate.fast_sigmoid(slope=25)                       # surrogate gradient for spike
+beta = 0.5
+num_steps = 50
+
+# network definition
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        # initializing layers
+        self.conv1 = nn.Conv2d(1, 12, 5)                            # 5x5 conv. kernel with 12 filters and 1 input channel
+        self.lif1 = snn.Leaky(beta=beta, spike_grad=spike_grad)     # LIF neuron layer 1
+        self.conv2 = nn.Conv2d(12, 64, 5)                           # 5x5 conv. kernel with 64 filters and 12 input channels
+        self.lif2 = snn.Leaky(beta=beta, spike_grad=spike_grad)     # LIF neuron layer 2
+        self.fc1 = nn.Linear(64*4*4, 10)
+        self.lif3 = snn.Leaky(beta=beta, spike_grad=spike_grad)     # LIF neuron layer 3 (output)
+
+    def forward(self, x):
+
+        # initialize hidden states and outputs at t=0
+        mem1 = self.lif1.init_leaky()
+        mem2 = self.lif2.init_leaky()
+        mem3 = self.lif3.init_leaky()
+
+        cur1 = F.max_pool2d(self.conv1(x), 2)
+        spk1, mem1 = self.lif1(cur1, mem1)
+
+        cur2 = F.max_pool2d(self.conv2(spk1), 2)
+        spk2, mem2 = self.lif2(cur2, mem2)
+
+        cur3 = self.fc1(spk2.view(batch_size, -1))
+        spk3, mem3 = self.lif3(cur3, mem3)
+
+        return spk3, mem3
+    
+net = Net()
