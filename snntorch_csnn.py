@@ -36,6 +36,8 @@ class LeakySigmoidSurrogate(nn.Module):
         reset = (spk - self.threshold).detach()                     # reset will be '0' if the neuron has spiked
         mem = self.beta * mem + input_ - reset
 
+        return spk, mem
+
     # Forward pass: Heaviside function
     # Backward pass: override Dirac Delta with gradient of fast sigmoid (surrogate gradient)
     """
