@@ -8,30 +8,27 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-class LIF(nn.Module):
-    def __init__(self, size_in, size_out, tau_mem=10e-3, threshold=1.0, t_step=1e-3):
+from SurrogateGradient import SpkSurrogateGradFunction
+
+class LIFlayer(nn.Module):
+    def __init__(self, tau_mem=10e-3, threshold=1.0, t_step=1e-3, output=False):
         super().__init__()
 
-        self.size_in, self.size_out, self.t_step = size_in, size_out, t_step
+        self.t_step = t_step
 
         self.tau_mem = tau_mem
         self.threshold = threshold
 
-        self.beta = np.float(np.exp(-self.time_step/self.tau_mem))      # membrane decay
+        self.beta = float(np.exp(-self.t_step/self.tau_mem))      # membrane decay
 
-    @staticmethod
-    def spike_fn(mem, threshold):
-        """
-        In discrete-time the spiking non-linearity can be formulated as a Heaviside step function.
-        """
-        out = torch.zeros_like(mem)
-        out[mem > threshold] = 1.0
+        self.spike_fn = SpkSurrogateGradFunction.apply                  # surrogate gradient class implementing spk non-lin. (forward) and surr. grad. (backward)
 
-        return out
+        self.output = output
     
-    def forward(self, x, mem):
+    def forward(self, x):
         """
-        Forward pass.
+            Forward pass (LIF neuron layer computation): reads out membrane value to check if spike 
+        is sent, followed by update of membrane value (or reset in case a spike was emitted).
 
         Arguments:
         - x: input to neuron (interpreted as a current injection)
@@ -41,14 +38,16 @@ class LIF(nn.Module):
         - spk: spikes emmited
         - mem: updated membrane potential value
         """
-        spk = LIF.spike_fn(mem, self.threshold)
-        rst = spk.detach()                          # no backprop through the membrane reset
 
-        mem = (self.beta*mem + x)*(1.0 - rst)       # update mem if not in reset
+        if not hasattr(self, 'mem'):                            # triggered only on the first pass to initialize membrane tensor
+            self.mem = torch.zeros_like(x, requires_grad=True)
 
-        return spk, mem
-    
-    class SurrogateFunction(torch.autograd.Function):
-        @staticmethod
-        def forward(ctx, mem):
-            ctx.save_for_backward(mem)
+        spk = self.spike_fn(self.mem, self.threshold)
+        rst = spk.detach()                                      # no backprop through the membrane reset
+
+        self.mem = (self.beta*self.mem + x)*(1.0 - rst)         # update mem if not in reset
+
+        if self.output:
+            return spk, self.mem
+        else:
+            return spk
