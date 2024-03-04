@@ -44,8 +44,8 @@ class SpkSurrogateGradFunction(torch.autograd.Function):
         - grad: gradient of loss wrt to mem
         """
 
-        mem, _ = ctx.saved_tensors
+        (mem,) = ctx.saved_tensors
         grad_input = grad_output.clone()                                            # upstream gradient
         grad = grad_input/(SpkSurrogateGradFunction.scale*torch.abs(mem) + 1.0)**2  # upstream gradient x local gradient
         
-        return grad
+        return grad, None

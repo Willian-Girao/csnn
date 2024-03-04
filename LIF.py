@@ -24,6 +24,11 @@ class LIFlayer(nn.Module):
         self.spike_fn = SpkSurrogateGradFunction.apply                  # surrogate gradient class implementing spk non-lin. (forward) and surr. grad. (backward)
 
         self.output = output
+        
+        self.forwarded = False
+
+    def reset_mem(self):
+        self.forwarded = False
     
     def forward(self, x):
         """
@@ -39,8 +44,9 @@ class LIFlayer(nn.Module):
         - mem: updated membrane potential value
         """
 
-        if not hasattr(self, 'mem'):                            # triggered only on the first pass to initialize membrane tensor
+        if not hasattr(self, 'mem') or not self.forwarded:                            # triggered only on the first pass to initialize membrane tensor
             self.mem = torch.zeros_like(x, requires_grad=True)
+            self.forwarded = True
 
         spk = self.spike_fn(self.mem, self.threshold)
         rst = spk.detach()                                      # no backprop through the membrane reset

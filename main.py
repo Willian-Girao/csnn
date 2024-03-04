@@ -1,30 +1,22 @@
 # author: williansoaresgirao
 # code source: https://snntorch.readthedocs.io/en/latest/tutorials/tutorial_6.html
 
-import snntorch as snn
 from snntorch import surrogate
-from snntorch import backprop
 from snntorch import functional as SF
 from snntorch import utils
-from snntorch import spikeplot as splt
 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 import torch.nn.functional as F
-
 import matplotlib.pyplot as plt
-import numpy as np
-import itertools
 
 from LIF import LIFlayer
 
-### 2. SETTING UP THE CSNN ###
+### 1. DATA LOADERS ###
 
-### 2.1 DATA LOADERS ###
-
-batch_size = 64
+batch_size = 128
 data_path = '/datasets/mnist'
 
 dtype = torch.float
@@ -42,7 +34,7 @@ mnist_test = datasets.MNIST(data_path, train=False, download=True, transform=tra
 train_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=True, drop_last=True)
 test_loader = DataLoader(mnist_test, batch_size=batch_size, shuffle=True, drop_last=True)
 
-### 2.2 DEFINE THE NETWORK (12C5-MP2-64C5-MP2-1024FC10) ###
+### 2. DEFINE THE NETWORK (12C5-MP2-64C5-MP2-1024FC10) ###
 
 # neuron and simulation parameters
 spike_grad = surrogate.fast_sigmoid(slope = 25)                       # surrogate gradient for spike
@@ -61,6 +53,11 @@ class CSNN(nn.Module):
         self.fc1 = nn.Linear(64*4*4, 10)
         self.lif3 = LIFlayer(output=True)
 
+    def reset_states(self):
+        self.lif1.reset_mem()
+        self.lif2.reset_mem()
+        self.lif3.reset_mem()
+
     def forward(self, x):
 
         cur1 = F.max_pool2d(self.conv1(x), 2)
@@ -76,7 +73,7 @@ class CSNN(nn.Module):
 
 net = CSNN()
 
-### 2.3 FORWARD PASS ###
+### 3. SINGLE BATCH FORWARD PASS ###
 
 data, targets = next(iter(train_loader))
 data = data.to(device)
@@ -85,7 +82,7 @@ targets = targets.to(device)
 def forward_pass(net, num_steps, data):
   mem_rec = []
   spk_rec = []
-  utils.reset(net)  # resets hidden states for all LIF neurons in net
+  net.reset_states()  # resets hidden states for all LIF neurons in net
 
   for step in range(num_steps):
       spk_out, mem_out = net(data)
@@ -96,9 +93,87 @@ def forward_pass(net, num_steps, data):
 
 spk_rec, mem_rec = forward_pass(net, num_steps, data)
 
-### 3. TRAINING LOOP ###
-
 loss_fn = SF.ce_rate_loss()             # cross entropy loss to the output spike count in order train a rate-coded network
 loss_val = loss_fn(spk_rec, targets)    # target neuron index as the second argument to generate a loss
 
-print(f"The loss from an untrained network is {loss_val.item():.3f}")
+print(f"> The loss from an untrained network is {loss_val.item():.3f}")
+
+acc = SF.accuracy_rate(spk_rec, targets)    # predicted output spikes and actual targets are supplied as arguments
+
+print(f"> The accuracy of a single batch using an untrained network is {acc*100:.3f}%")
+
+### 3.1. TEST ACCURACY ###
+
+def batch_accuracy(train_loader, net, num_steps):
+  '''
+  Returns the accuracy on the entire DataLoader object.
+  '''
+  with torch.no_grad():
+    total = 0
+    acc = 0
+    net.eval()
+
+    train_loader = iter(train_loader)
+    for data, targets in train_loader:
+      data = data.to(device)
+      targets = targets.to(device)
+      spk_rec, _ = forward_pass(net, num_steps, data)
+
+      acc += SF.accuracy_rate(spk_rec, targets) * spk_rec.size(1)
+      total += spk_rec.size(1)
+
+  return acc/total
+
+test_acc = batch_accuracy(test_loader, net, num_steps)
+
+print(f"> The total accuracy on the test set is: {test_acc * 100:.2f}%")
+
+### 4. TRAINING LOOP ###
+
+optimizer = torch.optim.Adam(net.parameters(), lr=1e-2, betas=(0.9, 0.999))
+num_epochs = 1
+loss_hist = []
+test_acc_hist = []
+counter = 0
+
+# outer training loop
+for epoch in range(num_epochs):
+
+    # training loop
+    for data, targets in iter(train_loader):
+        data = data.to(device)
+        targets = targets.to(device)
+
+        # forward pass
+        net.train()
+        spk_rec, _ = forward_pass(net, num_steps, data)
+
+        # initialize the loss & sum over time
+        loss_val = loss_fn(spk_rec, targets)
+
+        # gradient calculation + weight update
+        optimizer.zero_grad()
+        loss_val.backward()
+        optimizer.step()
+
+        # store loss history for future plotting
+        loss_hist.append(loss_val.item())
+
+        # test set
+        if counter % 50 == 0:
+            with torch.no_grad():
+                net.eval()
+
+                # Test set forward pass
+                test_acc = batch_accuracy(test_loader, net, num_steps)
+                print(f"Iteration {counter}, Test Acc: {test_acc * 100:.2f}%\n")
+                test_acc_hist.append(test_acc.item())
+
+        counter += 1
+
+fig = plt.figure(facecolor="w")
+plt.plot(test_acc_hist)
+plt.title("Test Set Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.show()
