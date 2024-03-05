@@ -100,7 +100,6 @@ def main():
                                            tmax=num_steps)
         units_ids = np.arange(num_units)        
 
-        total_batch_count = 0
         counter = 0
 
         while counter < num_batches:                                                    # building i-th batch of spiking data
@@ -133,7 +132,8 @@ def main():
             the default (zero) ones.
 
             The 3rd argument of 'torch.sparse.FloatTensor' defines the dimensions of the resulting tensor (3D in this case, as explined above). This means that each
-            sample (1st dim.) is represented in a span of 'num_steps' (2nd dim.) discrete time by 'num_units' (3rd dim.) spiking units.
+            sample (1st dim.) is represented in a span of 'num_steps' (2nd dim.) discrete time by 'num_units' (3rd dim.) spiking units. The computed time-to-first-spike
+            gives in which of the 'num_steps' the unit will be presented as having spiked.
             """
 
             i = torch.LongTensor(coo_tensor).to(device)                                 # location for entries that do not have default value (zero by default)
