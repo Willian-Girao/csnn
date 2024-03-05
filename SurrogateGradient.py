@@ -1,6 +1,11 @@
-#   Class implementing a surrogate gradient function for the forward pass binary non-linearity 
-# (i.e., partial derivative of a function which to some extent approximates the stepfunction for
-# gradient computation).
+"""
+Author: Willian Soares Girão
+Contact: wsoaresgirao@gmail.com
+
+Description:    Class implementing a surrogate gradient function for the forward pass binary non-linearity 
+                (i.e., partial derivative of a function which to some extent approximates the stepfunction for
+                gradient computation).
+"""
 
 import torch
 import numpy as np

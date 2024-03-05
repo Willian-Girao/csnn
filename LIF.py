@@ -1,4 +1,9 @@
-# Class implementing a (discrete time) LIF neuron.
+"""
+Author: Willian Soares Girão
+Contact: wsoaresgirao@gmail.com
+
+Description: class implementing a (discrete time) LIF neuron.
+"""
 
 # resources to read:
 # - https://discuss.pytorch.org/t/can-i-specify-backward-function-in-my-custom-layer-by-inheriting-nn-module/81231
@@ -28,6 +33,9 @@ class LIFlayer(nn.Module):
         self.forwarded = False
 
     def reset_mem(self):
+        """
+        Sets a flag to re-initialize self.mem tensor before a new batch forward pass.
+        """
         self.forwarded = False
     
     def forward(self, x):
