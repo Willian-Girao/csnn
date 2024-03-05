@@ -23,7 +23,7 @@ def main():
         
     # --- 1.1. loading Fashion MNIST dataset ---
         
-    batch_size = 64    
+    batch_size = 1
     root = 'datasets'
     
     train_dataset = torchvision.datasets.FashionMNIST(root, train=True, transform=None, target_transform=None, download=True)
@@ -40,9 +40,6 @@ def main():
     x_test = x_test.reshape(x_test.shape[0], -1)/255
     y_test = np.array(test_dataset.targets, dtype=int)
 
-    # plt.imshow(x_train[1].reshape(28, 28), cmap=plt.cm.gray_r)
-    # plt.show()
-
     print(f'x_train shape: {x_train.shape}')
     print(f'x_test shape: {x_test.shape}')
 
@@ -51,7 +48,7 @@ def main():
 
     # --- 1.3. analog to spike data ---
 
-    def current2firing_time(x, tau_mem=20.0, thr=0.7, tmax=100, epsilon=1e-7):
+    def current2firing_time(x, tau_mem=20.0, thr=0.2, tmax=100, epsilon=1e-7):
         """
         Computes first spiking time latency for a current input x ('current injection') fed to a LIF neuron (current-based LIF).
 
@@ -110,11 +107,9 @@ def main():
 
             batch_index = sample_index[batch_size*counter:batch_size*(counter+1)]       # gathering samples belonging to the i-th batch
 
-            batch_temp = [ [] for i in range(3) ]                                       # matrix holding analog-latency conversion results of all samples within the i-th batch
+            coo_tensor = [ [] for i in range(3) ]                                       # matrix holding analog-latency conversion results of all samples within the i-th batch
 
             for enumerator, sample_idx in enumerate(batch_index):
-
-                print(enumerator, sample_idx)
 
                 c = firing_times[sample_idx] < num_steps                                # getting units that will fire within 'num_steps' simulation steps
 
@@ -122,15 +117,50 @@ def main():
 
                 batch_sample = [ enumerator for _ in range(len(times)) ]                # within batch sample's index (same for each unit that will spike) - to what sample in the batch each unit belongs to
 
-                batch_temp[0].extend(batch_sample)                                      # sample index within the batch (same for each unit)
-                batch_temp[1].extend(times)                                             # time-to-first-spike of each unit that has reached the threshold
-                batch_temp[2].extend(units)                                             # units' IDs)
+                coo_tensor[0].extend(batch_sample)                                      # sample index within the batch (same for each unit)
+                coo_tensor[1].extend(times)                                             # time-to-first-spike of each unit that has reached the threshold
+                coo_tensor[2].extend(units)                                             # units' IDs)
 
-            i = torch.LongTensor(batch_temp).to(device)                                 # ?
-            v = torch.FloatTensor(np.ones(len(batch_temp[0]))).to(device)               # ?
+            """
+                In the following lines of code are creatig sparse tensors for improved memory usage (source: https://pytorch.org/docs/stable/sparse.html, 
+            section "Construction"). They will effectively transform the latency encoding above into spiking data.
 
-            X_batch = torch.sparse.FloatTensor(i, v, torch.Size([batch_size, num_steps, num_units])).to(device) # ?
-            Y_batch = torch.tensor(labels_[batch_index], device)                                                # ?
+            The tensor 'X_batch' will have three dimensions (a - # of sample in the batch, b - # of discrete time steps, c - # of units). This means that, for each of
+            the 'num_steps' discrete time steps, a unit 'c' in sample 'a' will have a '1' at X_batch[a][b][c] if at time_step 'b' it was above the thr value (it will be
+            '0' otherwise).
+
+            The data becomes "spiking" data because the 2nd argument of 'torch.sparse.FloatTensor' sets the entries (values) for 'X_batch' that are not supposed to be
+            the default (zero) ones.
+
+            The 3rd argument of 'torch.sparse.FloatTensor' defines the dimensions of the resulting tensor (3D in this case, as explined above). This means that each
+            sample (1st dim.) is represented in a span of 'num_steps' (2nd dim.) discrete time by 'num_units' (3rd dim.) spiking units.
+            """
+
+            i = torch.LongTensor(coo_tensor).to(device)                                 # location for entries that do not have default value (zero by default)
+            v = torch.FloatTensor(np.ones(len(coo_tensor[0]))).to(device)               # entries for locations without default value (setting to one)
+
+            X_batch = torch.sparse.FloatTensor(i, 
+                                               v, 
+                                               torch.Size([batch_size, num_steps, num_units])
+                                               ).to(device)
+            
+            Y_batch = torch.tensor(labels_[batch_index], device=device)
+
+            # Uncomment lines bellow to export the "spiking image" for the samples.
+            # w = X_batch.to_dense()
+            # wtolist = w.tolist()
+            # counts = 0
+            # for sample in wtolist:
+            #     counts += 1
+            #     countt = 0
+            #     for tstep in sample:
+            #         print(f'sample # {counts}, tstep: {countt}')
+            #         plt.title(f'sample # {counts}, tstep: {countt}')
+            #         plt.imshow(np.array(tstep).reshape(28, 28), cmap=plt.cm.gray_r)
+            #         plt.axis('off')
+            #         plt.savefig(f'animation/tstep_{countt}.png')
+            #         plt.close()
+            #         countt += 1
 
             yield X_batch.to(device), Y_batch.to(device)                                                        # ?
 
