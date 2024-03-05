@@ -26,11 +26,11 @@ class LIFlayer(nn.Module):
 
         self.beta = float(np.exp(-self.t_step/self.tau_mem))      # membrane decay
 
-        self.spike_fn = SpkSurrogateGradFunction.apply                  # surrogate gradient class implementing spk non-lin. (forward) and surr. grad. (backward)
+        self.spike_fn = SpkSurrogateGradFunction.apply            # surrogate gradient class implementing spk non-lin. (forward) and surr. grad. (backward)
 
-        self.output = output
+        self.output = output                                      # if 'True' returns (spk, mem), else returns only spk
         
-        self.forwarded = False
+        self.forwarded = False                                    # flag to reset mem state between forward pases
 
     def reset_mem(self):
         """
