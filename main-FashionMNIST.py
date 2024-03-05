@@ -162,7 +162,7 @@ def main():
             #         plt.close()
             #         countt += 1
 
-            yield X_batch.to(device), Y_batch.to(device)                                                        # ?
+            yield X_batch.to(device), Y_batch.to(device)
 
             counter += 1
 
