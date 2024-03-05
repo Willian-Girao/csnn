@@ -81,7 +81,8 @@ def main():
         - tau_mem: membrane time constant (continuous-time)
 
         Returns:
-        - 
+        - X_batch: three dimensional tensor (# of sample in the batch, # of discrete time steps, # of units) containing spike representation of images dataset
+        - Y_batch: the labels
         """
 
         labels_ = np.array(Y, dtype=int)
