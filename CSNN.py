@@ -7,6 +7,7 @@ Description:    Class implementing a convolutional spiking neural network (nn.Mo
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 from LIF import LIFlayer
 
@@ -50,13 +51,33 @@ class CSNN(nn.Module):
         return spk3, mem3
     
     @staticmethod
-    def forward_pass(net, num_steps, data):
+    def forward_pass_static(net, data, num_steps=100):
+        """
+        Same input fed at every time step.
+        """
         mem_rec = []
         spk_rec = []
         net.reset_states()                                 # resets hidden states for all LIF neurons in net
 
         for step in range(num_steps):
             spk_out, mem_out = net.forward(data)
+            spk_rec.append(spk_out)
+            mem_rec.append(mem_out)
+
+        return torch.stack(spk_rec), torch.stack(mem_rec)
+    
+    @staticmethod
+    def forward_pass_spikes(net, data, num_steps):
+        """
+        Input has different values for different time steps.
+        """
+        mem_rec = []
+        spk_rec = []
+        net.reset_states()                                              # resets hidden states for all LIF neurons in net
+
+        for step in range(num_steps):
+            spk_out, mem_out = net.forward(data[:, step:step+1, :, :])  # feed each time step sequentially
+
             spk_rec.append(spk_out)
             mem_rec.append(mem_out)
 

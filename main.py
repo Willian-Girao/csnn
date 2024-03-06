@@ -1,8 +1,8 @@
 # author: williansoaresgirao
 # code source: https://snntorch.readthedocs.io/en/latest/tutorials/tutorial_6.html
 
-from snntorch import surrogate
 from snntorch import functional as SF
+import numpy as np
 
 import torch
 from torch.utils.data import DataLoader
@@ -13,7 +13,7 @@ from CSNN import CSNN
 
 ### 1. DATA LOADERS ###
 
-batch_size = 128
+batch_size = 64
 data_path = '/datasets/mnist'
 
 dtype = torch.float
@@ -34,9 +34,7 @@ test_loader = DataLoader(mnist_test, batch_size=batch_size, shuffle=True, drop_l
 ### 2. DEFINE THE NETWORK ###
 
 # neuron and simulation parameters
-spike_grad = surrogate.fast_sigmoid(slope = 25)                       # surrogate gradient for spike
-beta = 0.5
-num_steps = 50
+num_steps = 100
 
 net = CSNN(batch_size = batch_size)
 
@@ -46,7 +44,7 @@ data, targets = next(iter(train_loader))
 data = data.to(device)
 targets = targets.to(device)
 
-spk_rec, mem_rec = CSNN.forward_pass(net, num_steps, data)
+spk_rec, mem_rec = CSNN.forward_pass_static(net, data, num_steps)
 
 loss_fn = SF.ce_rate_loss()             # cross entropy loss to the output spike count in order train a rate-coded network
 loss_val = loss_fn(spk_rec, targets)    # target neuron index as the second argument to generate a loss
@@ -72,16 +70,16 @@ def batch_accuracy(train_loader, net, num_steps):
     for data, targets in train_loader:
       data = data.to(device)
       targets = targets.to(device)
-      spk_rec, _ = CSNN.forward_pass(net, num_steps, data)
+      spk_rec, _ = CSNN.forward_pass_static(net, data, num_steps)
 
       acc += SF.accuracy_rate(spk_rec, targets) * spk_rec.size(1)
       total += spk_rec.size(1)
 
   return acc/total
 
-test_acc = batch_accuracy(test_loader, net, num_steps)
+# test_acc = batch_accuracy(test_loader, net, num_steps)
 
-print(f"> The total accuracy on the test set is: {test_acc * 100:.2f}%")
+# print(f"> The total accuracy on the test set is: {test_acc * 100:.2f}%")
 
 ### 4. TRAINING LOOP ###
 
@@ -101,9 +99,10 @@ for epoch in range(num_epochs):
 
         # forward pass
         net.train()
-        spk_rec, _ = CSNN.forward_pass(net, num_steps, data)
+        spk_rec, _ = CSNN.forward_pass_static(net, data, num_steps)
 
         # initialize the loss & sum over time
+        print('>> ', np.array(targets.tolist()).shape, np.array(targets.tolist())[0])
         loss_val = loss_fn(spk_rec, targets)
 
         # gradient calculation + weight update
