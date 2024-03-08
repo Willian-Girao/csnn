@@ -26,11 +26,13 @@ class SpikeDataset(torch.utils.data.Dataset):
         """
         Arguments:
         - tau_mem: membrane time constant of LIF neuron.
-        - thr: membrane's spike threshold
-        - tmax: maximum time returned (neurons that did not fire)
+        - thr: membrane's spike threshold.
+        - epsilon: small constant to prevent division by 0.
+        - time_step: delta t of a single time step.
+        - num_steps: total number of discrete time steps.
 
         Returns:
-        - 
+        - sample: a single (x, y) pair representing an img sample in spiking format.
         """
         self.torchv_dataset = torchv_dataset
         self.tau_mem = tau_mem
