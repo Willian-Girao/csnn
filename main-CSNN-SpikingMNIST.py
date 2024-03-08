@@ -2,7 +2,7 @@
 Author: Willian Soares Girão
 Contact: wsoaresgirao@gmail.com
 
-Description: trains a CSNN on the Fashion MNIST dataset (converted into spiking data).
+Description: trains a CSNN on the MNIST dataset (converted into spiking data).
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,7 +27,7 @@ def main():
 
     ### 1. DATA LOADING ###
         
-    # --- 1.1. loading Fashion MNIST dataset ---
+    # --- 1.1. loading MNIST dataset ---
         
     batch_size = 64
     root = 'datasets'
@@ -43,7 +43,7 @@ def main():
     train_loader = DataLoader(train_spks, batch_size=batch_size, shuffle=True, drop_last=True)
     test_loader = DataLoader(test_spks, batch_size=batch_size, shuffle=True, drop_last=True)        
 
-    ### 1. CSNN INSTANTIATION ###
+    ### 2. CSNN INSTANTIATION ###
 
     num_steps = 100
 
@@ -51,7 +51,7 @@ def main():
 
     loss_fn = SF.ce_rate_loss()             # cross entropy loss to the output spike count in order train a rate-coded network
 
-    ### 2. TRAINING LOOP ###
+    ### 3. TRAINING LOOP ###
 
     def batch_accuracy(data_loader, device, num_steps):
         '''
