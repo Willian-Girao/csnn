@@ -17,7 +17,6 @@ class SpikeDataset(torch.utils.data.Dataset):
     def __init__(self, torchv_dataset,
                  tau_mem=20e-3,
                  thr=0.2,
-                 tmax=100,
                  epsilon=1e-7,
                  time_step=1e-3,
                  num_steps=100):
@@ -33,7 +32,6 @@ class SpikeDataset(torch.utils.data.Dataset):
         self.torchv_dataset = torchv_dataset
         self.tau_mem = tau_mem
         self.thr = thr
-        self.tmax = tmax
         self.epsilon = epsilon
         self.time_step = time_step
         self.num_steps = num_steps
@@ -51,7 +49,7 @@ class SpikeDataset(torch.utils.data.Dataset):
             Normalize(self.maxval),
             Pixel2Latency(self.tau_mem/self.time_step,          # scaling (continuous-time) 'tau_mem' to fit the simulation's (discrete-time) step
                           self.thr,
-                          self.tmax,
+                          self.num_steps,
                           self.epsilon),
             Latency2Spikes(self.input_dim,
                            self.time_step,
