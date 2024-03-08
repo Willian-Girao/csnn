@@ -80,4 +80,9 @@ class Latency2Spikes(object):
         x_ = torch.sparse_coo_tensor(indices, values, (self.num_steps, self.input_dim[0], self.input_dim[1]))
         y_ = torch.from_numpy(np.array([y_]))
 
-        return x_, y_
+        """
+            Batches of sparse tensors are not currently supported by the default collate_fn. Have to 
+        convert the sparse tensors to dense (defeating the purpose of using them :( ).
+        source: https://github.com/pytorch/pytorch/issues/106837
+        """
+        return x_.to_dense(), y_.to_dense()
