@@ -103,16 +103,13 @@ class SpikeDataset(torch.utils.data.Dataset):
         Z = x_[0]
         plot = [ax.plot_surface(X, Y, np.full_like(X, 0), facecolors=np.where(Z == 1.0, 'k', 'none'))]
 
-        ax.set_xlabel('x-coor')
-        ax.set_ylabel('y-coor')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
         ax.set_zlabel('time step')
 
-        ax.set_xlim(1, 28)
-        ax.set_ylim(1, 28)
+        ax.set_xlim(1, self.input_dim[0])
+        ax.set_ylim(1, self.input_dim[1])
         ax.set_zlim(0, len(frames))
-
-        ax.set_xticks(np.arange(1, 29, 1))
-        ax.set_yticks(np.arange(1, 29, 1))
 
         ax.set_yticklabels([])
         ax.set_xticklabels([])
