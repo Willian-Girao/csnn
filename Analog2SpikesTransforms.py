@@ -27,13 +27,20 @@ class Normalize(object):
         return x_, y_
     
 class Pixel2Latency(object):
-    """..."""
+    """
+    Computes first spiking time latency for a current input x ('current injection') fed to a LIF neuron (current-based LIF).
+    """
 
     def __init__(self, tau_mem, thr, tmax, epsilon):
         """
+        Arguments:
         - tau_mem: membrane time constant of LIF neuron.
         - thr: membrane's spike threshold
         - tmax: maximum time returned (neurons that did not fire)
+
+        Returns:
+        - T: time to first spike given each "current injection" represented in x.
+        - y_: sample label
         """
         self.tau_mem = tau_mem
         self.thr = thr
@@ -51,9 +58,20 @@ class Pixel2Latency(object):
         return np.array(T, dtype=int), y_
     
 class Latency2Spikes(object):
-    """..."""
+    """ Take a dataset in analog (continuous value) format and generates spikes tensors. """
 
     def __init__(self, input_dim, time_step, num_steps, tau_mem):
+        """
+        Arguments:
+        - input_dim: dimensions of image
+        - time_step: time taken by a single simulated time step (how finely time is discretized)
+        - num_steps: number of discrete time steps simulated (each representing 'time_step' units of time)
+        - tau_mem: membrane time constant (continuous-time)
+
+        Returns:
+        - x_: input image in spiking representation
+        - y_: the label
+        """
         self.input_dim = input_dim
         self.time_step = time_step
         self.num_steps = num_steps
