@@ -78,7 +78,7 @@ class Latency2Spikes(object):
         values = torch.tensor(np.ones(len(coo_[0])), dtype=torch.float32)           # spike as 1.0 at time step t (otherwise 0.0 default value)
         
         x_ = torch.sparse_coo_tensor(indices, values, (self.num_steps, self.input_dim[0], self.input_dim[1]))
-        y_ = torch.from_numpy(np.array(y_))
+        y_ = torch.from_numpy(np.array(y_, dtype=int))
 
         """
             Batches of sparse tensors are not currently supported by the default collate_fn. Have to 
