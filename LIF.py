@@ -16,7 +16,7 @@ import torch.nn as nn
 from SurrogateGradient import SpkSurrogateGradFunction
 
 class LIFlayer(nn.Module):
-    def __init__(self, tau_mem=10e-3, threshold=1.0, t_step=1e-3, output=False):
+    def __init__(self, tau_mem=10e-3, threshold=1.0, t_step=6e-3, output=False):
         super().__init__()
 
         self.t_step = t_step
