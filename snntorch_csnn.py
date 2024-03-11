@@ -158,13 +158,6 @@ spk_rec, mem_rec = forward_pass(net, num_steps, data)
 ### 3. TRAINING LOOP ###
 
 loss_fn = SF.ce_rate_loss()             # cross entropy loss to the output spike count in order train a rate-coded network
-loss_val = loss_fn(spk_rec, targets)    # target neuron index as the second argument to generate a loss
-
-print(f"The loss from an untrained network is {loss_val.item():.3f}")
-
-acc = SF.accuracy_rate(spk_rec, targets)    # predicted output spikes and actual targets are supplied as arguments
-
-print(f"The accuracy of a single batch using an untrained network is {acc*100:.3f}%")
 
 def batch_accuracy(train_loader, net, num_steps):
   '''
@@ -186,18 +179,17 @@ def batch_accuracy(train_loader, net, num_steps):
 
   return acc/total
 
-test_acc = batch_accuracy(test_loader, net, num_steps)
-
-print(f"The total accuracy on the test set is: {test_acc * 100:.2f}%")
-
 optimizer = torch.optim.Adam(net.parameters(), lr=1e-2, betas=(0.9, 0.999))
 num_epochs = 1
 loss_hist = []
 test_acc_hist = []
+dataset_percentage = []
 counter = 0
 
 # outer training loop
 for epoch in range(num_epochs):
+
+    print(f'>> epoch #: {epoch}')
 
     # training loop
     for data, targets in iter(train_loader):
@@ -226,16 +218,17 @@ for epoch in range(num_epochs):
 
                 # Test set forward pass
                 test_acc = batch_accuracy(test_loader, net, num_steps)
-                print(f"Iteration {counter}, Test Acc: {test_acc * 100:.2f}%\n")
+                print(f"training set percentage: {(((counter+1)*batch_size)/len(mnist_train))*100}, test accuracy: {test_acc * 100:.2f}%\n")
                 test_acc_hist.append(test_acc.item())
+                dataset_percentage.append((((counter+1)*batch_size)/len(mnist_train))*100)
 
         counter += 1
 
 ### 4. PLOT TEST ACCURACY ###
 
 fig = plt.figure(facecolor="w")
-plt.plot(test_acc_hist)
-plt.title("Test Set Accuracy")
-plt.xlabel("Epoch")
-plt.ylabel("Accuracy")
+plt.plot(test_acc_hist, dataset_percentage)
+plt.title("test set accuracy (static mnist)")
+plt.xlabel("training set percentage")
+plt.ylabel("accuracy")
 plt.show()
