@@ -12,7 +12,7 @@ import numpy as np
 from LIF import LIFlayer
 
 class CSNN(nn.Module):
-    def __init__(self, batch_size=128):
+    def __init__(self, batch_size=128, spk_threshold=1.0):
         super().__init__()
 
         # training parameters
@@ -20,11 +20,11 @@ class CSNN(nn.Module):
 
         # initializing layers
         self.conv1 = nn.Conv2d(1, 12, 5)
-        self.lif1 = LIFlayer()
+        self.lif1 = LIFlayer(threshold=spk_threshold)
         self.conv2 = nn.Conv2d(12, 64, 5)
-        self.lif2 = LIFlayer()
+        self.lif2 = LIFlayer(threshold=spk_threshold)
         self.fc1 = nn.Linear(64*4*4, 10)
-        self.lif3 = LIFlayer(output=True)
+        self.lif3 = LIFlayer(output=True, threshold=spk_threshold)
 
     def reset_states(self):
         """
@@ -70,6 +70,8 @@ class CSNN(nn.Module):
     def forward_pass_spikes(net, data, num_steps):
         """
         Input has different values for different time steps.
+
+        @TODO: get 'num_steps' from data (assume [batch samples, time steps, x-coor, y-coor])
         """
         mem_rec = []
         spk_rec = []
