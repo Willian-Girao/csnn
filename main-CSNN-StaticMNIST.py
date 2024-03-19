@@ -29,7 +29,7 @@ def main():
         
     # --- 1.1. loading MNIST dataset ---
         
-    batch_size = 64
+    batch_size = 128
     num_steps = 50
     root = 'datasets'
 
@@ -118,9 +118,20 @@ def main():
 
             counter += 1
 
+    with torch.no_grad():
+        net.eval()
+
+        # Test set forward pass
+        test_acc = batch_accuracy(test_loader, device, num_steps)
+        print(f"training set percentage: 100%, test accuracy: {test_acc * 100:.2f}%\n")
+        test_acc_hist.append(test_acc.item())
+        dataset_percentage.append(100.0)
+
     fig = plt.figure(facecolor="w")
-    plt.plot(test_acc_hist, dataset_percentage)
-    plt.title("test set accuracy (static mnist)")
+    plt.plot(dataset_percentage, test_acc_hist)
+    plt.ylim(0, 1.0)
+    plt.xlim(0, 100)
+    plt.title("test set accuracy (static MNIST - csnn)")
     plt.xlabel("training set percentage")
     plt.ylabel("accuracy")
     plt.show()

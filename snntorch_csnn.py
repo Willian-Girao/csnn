@@ -227,7 +227,9 @@ for epoch in range(num_epochs):
 ### 4. PLOT TEST ACCURACY ###
 
 fig = plt.figure(facecolor="w")
-plt.plot(test_acc_hist, dataset_percentage)
+plt.plot(dataset_percentage, test_acc_hist)
+plt.ylim(0, 1.0)
+plt.xlim(0, 100)
 plt.title("test set accuracy (static mnist)")
 plt.xlabel("training set percentage")
 plt.ylabel("accuracy")
