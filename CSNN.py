@@ -12,11 +12,12 @@ import numpy as np
 from LIF import LIFlayer
 
 class CSNN(nn.Module):
-    def __init__(self, batch_size=128, spk_threshold=1.0):
+    def __init__(self, batch_size=128, spk_threshold=1.0, k=25.0):
         super().__init__()
 
         # training parameters
         self.batch_size = batch_size
+        self.k = k
 
         # initializing layers
         self.conv1 = nn.Conv2d(1, 12, 5)
@@ -40,13 +41,13 @@ class CSNN(nn.Module):
         """
 
         cur1 = F.max_pool2d(self.conv1(x), 2)
-        spk1 = self.lif1(cur1)
+        spk1 = self.lif1(cur1, self.k)
 
         cur2 = F.max_pool2d(self.conv2(spk1), 2)
-        spk2 = self.lif2(cur2)
+        spk2 = self.lif2(cur2, self.k)
 
         cur3 = self.fc1(spk2.view(self.batch_size, -1))     # @TODO '.view(self.batch_size, -1)'
-        spk3, mem3 = self.lif3(cur3)
+        spk3, mem3 = self.lif3(cur3, self.k)
 
         return spk3, mem3
     

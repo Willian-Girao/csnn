@@ -38,7 +38,7 @@ class LIFlayer(nn.Module):
         """
         self.forwarded = False
     
-    def forward(self, x):
+    def forward(self, x, k):
         """
             Forward pass (LIF neuron layer computation): reads out membrane value to check if spike 
         is sent, followed by update of membrane value (or reset in case a spike was emitted).
@@ -56,7 +56,7 @@ class LIFlayer(nn.Module):
             self.mem = torch.zeros_like(x, requires_grad=True)
             self.forwarded = True
 
-        spk = self.spike_fn(self.mem, self.threshold)
+        spk = self.spike_fn(self.mem, self.threshold, k)
         rst = spk.detach()                                      # no backprop through the membrane reset
 
         self.mem = (self.beta*self.mem + x)*(1.0 - rst)         # update mem if not in reset
