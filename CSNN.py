@@ -15,9 +15,10 @@ class CSNN(nn.Module):
     def __init__(self, batch_size=128, spk_threshold=1.0, k=25.0):
         super().__init__()
 
+        self.k = k                      # slope of the surrogate gradient function
+
         # training parameters
         self.batch_size = batch_size
-        self.k = k
 
         # initializing layers
         self.conv1 = nn.Conv2d(1, 12, 5)
