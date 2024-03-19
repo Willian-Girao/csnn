@@ -9,16 +9,19 @@ import matplotlib.pyplot as plt
 
 from snntorch import functional as SF
 
-import torch
-import torchvision
+import torch, torchvision, os, time
 
 from Analog2SpikeDataset import SpikeDataset
 from torch.utils.data import DataLoader
+
+from utils import create_results_dir
 
 from CSNN import CSNN
 
 
 def main():
+
+    model_path = create_results_dir()
 
     if torch.cuda.is_available():               # check GPU availability
         device = torch.device('cuda')
@@ -29,7 +32,7 @@ def main():
         
     # --- 1.1. loading MNIST dataset ---
         
-    batch_size = 64
+    batch_size = 128
     num_steps = 50
     root = 'datasets'
     
@@ -47,6 +50,10 @@ def main():
     ### 2. CSNN INSTANTIATION ###
 
     net = CSNN(batch_size=batch_size, spk_threshold=1.0)
+
+    print('Model\'s state dict:')
+    for param_tensor in net.state_dict():
+        print(param_tensor, '\t', net.state_dict()[param_tensor].size())
 
     loss_fn = SF.ce_rate_loss()             # cross entropy loss to the output spike count in order train a rate-coded network
 
@@ -77,6 +84,8 @@ def main():
     loss_hist = []
     test_acc_hist = []
     dataset_percentage = []
+
+    start_time = time.time()
 
     # outer training loop
     for epoch in range(num_epochs):
@@ -117,13 +126,38 @@ def main():
 
             counter += 1
 
+    current_time = time.time()
+    elapsed_time = (current_time - start_time) / 60
+
+    with torch.no_grad():
+        net.eval()
+
+        # Test set forward pass
+        test_acc = batch_accuracy(test_loader, device, num_steps)
+        print(f"training set percentage: 100%, test accuracy: {test_acc * 100:.2f}%\n")
+        test_acc_hist.append(test_acc.item())
+        dataset_percentage.append(100.0)
+
     fig = plt.figure(facecolor="w")
-    plt.plot(test_acc_hist, dataset_percentage)
-    plt.ylim(0, 1)
-    plt.title("test set accuracy (static mnist)")
+    plt.plot(dataset_percentage, test_acc_hist)
+    plt.ylim(0, 1.0)
+    plt.xlim(0, 100)
+    plt.title("test set accuracy (spiking MNIST - csnn)")
     plt.xlabel("training set percentage")
     plt.ylabel("accuracy")
-    plt.show()
+    plt.savefig(os.path.join(model_path, 'test_accuracy_over_training.png'))
+    plt.close()
+
+    torch.save({
+        'model_state_dict': net.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss_fn,
+    }, os.path.join(model_path, 'model_optimizer_loss_dict.pt'))
+
+    with open(os.path.join(model_path, 'metadata.txt'), 'w') as file:
+        file.write(f"Training time: {elapsed_time} minutes\n")
+        file.write(f"Test accuracy: {test_acc_hist}\n")
+        file.write(f"Training samples: {dataset_percentage}\%\n")
     
 if __name__ == '__main__':
     main()
