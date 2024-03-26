@@ -43,7 +43,7 @@ class SpikeMonitor():
                 os.makedirs(plot_path)
 
             for c in range(sample_s.shape[1]):
-                channel_c = sample_s[:, c, :, :].detach().numpy()
+                channel_c = sample_s[:, c, :, :].cpu().detach().numpy()
                 name = f'layer_spk-{self.layer}_channel_{c}_sample_{s}'
 
                 plot_path = os.path.join(plot_path, f'channel-{c}')
@@ -135,7 +135,7 @@ class StateMonitor():
                 os.makedirs(plot_path)
 
             for c in range(sample_s.shape[1]):
-                channel_c = sample_s[:, c, :, :].detach().numpy()
+                channel_c = sample_s[:, c, :, :].cpu().detach().numpy()
                 name = f'layer_mem-{self.layer}_channel_{c}_sample_{s}'
 
                 plot_path = os.path.join(plot_path, f'channel-{c}')
@@ -162,7 +162,7 @@ class StateMonitor():
                 os.makedirs(plot_path)
 
             for c in range(sample_s.shape[1]):
-                channel_c = sample_s[:, c, :, :].detach().numpy()
+                channel_c = sample_s[:, c, :, :].cpu().detach().numpy()
                 name = f'sampled_mem-{self.layer}_channel_{c}_sample_{s}'
 
                 plot_path = os.path.join(plot_path, f'channel-{c}')
