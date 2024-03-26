@@ -16,7 +16,7 @@ import torch.nn as nn
 from SurrogateGradient import SpkSurrogateGradFunction
 
 class LIFlayer(nn.Module):
-    def __init__(self, tau_mem=10e-3, threshold=1.0, t_step=6e-3, output=False):
+    def __init__(self, tau_mem=10e-3, threshold=1.0, t_step=6e-3):
         super().__init__()
 
         self.t_step = t_step
@@ -27,8 +27,6 @@ class LIFlayer(nn.Module):
         self.beta = float(np.exp(-self.t_step/self.tau_mem))      # membrane decay
 
         self.spike_fn = SpkSurrogateGradFunction.apply            # surrogate gradient class implementing spk non-lin. (forward) and surr. grad. (backward)
-
-        self.output = output                                      # if 'True' returns (spk, mem), else returns only spk
         
         self.forwarded = False                                    # flag to reset mem state between forward pases
 
@@ -61,7 +59,4 @@ class LIFlayer(nn.Module):
 
         self.mem = (self.beta*self.mem + x)*(1.0 - rst)         # update mem if not in reset
 
-        if self.output:
-            return spk, self.mem
-        else:
-            return spk
+        return spk, torch.clamp(self.mem, min=0, max=1)
